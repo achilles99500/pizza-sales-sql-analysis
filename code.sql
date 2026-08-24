@@ -124,3 +124,36 @@ RankedPizzas AS (
 SELECT category, name, revenue
 FROM RankedPizzas
 WHERE rank_num <= 3;
+
+-- Market Basket Analysis (Self-Joins)
+-- Store managers want to know which pizza pairs are most frequently bought together in the exact same order so they can create high-converting combo deals.
+SELECT 
+    pt1.name AS pizza_1,
+    pt2.name AS pizza_2,
+    COUNT(*) AS times_bought_together
+FROM order_details od1
+JOIN order_details od2 
+    ON od1.order_id = od2.order_id 
+    AND od1.pizza_id < od2.pizza_id  -- Prevents duplicate reverse pairs and self-matching
+JOIN pizzas p1 ON od1.pizza_id = p1.pizza_id
+JOIN pizza_types pt1 ON p1.pizza_type_id = pt1.pizza_type_id
+JOIN pizzas p2 ON od2.pizza_id = p2.pizza_id
+JOIN pizza_types pt2 ON p2.pizza_type_id = pt2.pizza_type_id
+GROUP BY pt1.name, pt2.name
+ORDER BY times_bought_together DESC
+LIMIT 5;
+
+-- Dynamic Pricing Simulation (Control Flow)
+-- Management wants to test a business hypothesis: What would happen to total annual revenue if
+-- we introduced  a 15% "Happy Hour" discount during off-peak afternoon hours (2:00 PM to 4:59 PM)?
+SELECT 
+    ROUND(SUM(od.quantity * p.price), 2) AS original_revenue,
+    ROUND(SUM(
+        CASE 
+            WHEN HOUR(o.time) BETWEEN 14 AND 16 THEN (od.quantity * p.price) * 0.85
+            ELSE (od.quantity * p.price)
+        END
+    ), 2) AS simulated_happy_hour_revenue
+FROM orders o
+JOIN order_details od ON o.order_id = od.order_id
+JOIN pizzas p ON od.pizza_id = p.pizza_id;
